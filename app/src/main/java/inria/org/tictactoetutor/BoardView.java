@@ -418,9 +418,11 @@ public class BoardView extends View {
                                 hist[current] = getColor(getNumber(boards[current]));
                                 state = false;
                                 turn = turn == CROSS ? NOUGHT : CROSS;
+                                playSound(soundID1);
                                 invalidate();
                             }
                         } else {
+                            playSound(soundID1);
                             state = !state;
                             invalidate();
 
@@ -432,7 +434,10 @@ public class BoardView extends View {
                             if (!hasWon(boards[current], CROSS) && !hasWon(boards[current], NOUGHT)
                                     && current != 9) {
                                 state = !state;
+                                playSound(soundID1);
                                 invalidate();
+                            } else {
+                                playSound(soundID2);
                             }
                         }
                     }
@@ -447,6 +452,7 @@ public class BoardView extends View {
                                     current = k;
                                     state = false;
                                     turn = (k == (k / 2) * 2) ? CROSS : NOUGHT;
+                                    playSound(soundID1);
                                     invalidate();
                                 }
                             }
@@ -461,7 +467,10 @@ public class BoardView extends View {
                                     current = k;
                                     state = false;
                                     turn = (k == (k / 2) * 2) ? CROSS : NOUGHT;
+                                    playSound(soundID1);
                                     invalidate();
+                                } else {
+                                    playSound(soundID2);
                                 }
                             }
                         }
