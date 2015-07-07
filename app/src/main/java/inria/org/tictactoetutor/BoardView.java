@@ -5,6 +5,8 @@ import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -179,6 +181,12 @@ public class BoardView extends View {
     private float history;
     private float historyS;
     private float border;
+    private int soundID1;
+    private int soundID2;
+    private AudioManager audioManager;
+    private SoundPool soundPool;
+    private boolean loaded;
+
     public BoardView(BoardActivity bD, Context context, AttributeSet attrs) {
         super(context, attrs);
         paint = new Paint();
@@ -193,6 +201,20 @@ public class BoardView extends View {
         state = false;
         current = 0;
         hist[current] = getColor(getNumber(boards[current]));
+        audioManager =
+                (AudioManager) context.getSystemService(context.AUDIO_SERVICE);
+        soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 0);
+        soundPool.setOnLoadCompleteListener(new SoundPool.OnLoadCompleteListener() {
+            @Override
+            public void onLoadComplete(SoundPool soundPool, int sampleId,
+                                       int status) {
+                loaded = true;
+            }
+        });
+        soundID1 = soundPool.load(context, R.raw.sound1, 1);
+        soundID2 = soundPool.load(context, R.raw.sound2, 1);
+
+
     }
     public void init() {
 
@@ -448,6 +470,17 @@ public class BoardView extends View {
             }
         }
         return true;
+    }
+
+    private void playSound(int sid) {
+        float actualVolume = (float) audioManager
+                .getStreamVolume(AudioManager.STREAM_MUSIC);
+        float maxVolume = (float) audioManager
+                .getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        float volume = actualVolume / maxVolume;
+        if (loaded) {
+            soundPool.play(sid, volume, volume, 1, 0, 1f);
+        }
     }
 
 
