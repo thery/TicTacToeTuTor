@@ -1,6 +1,7 @@
 package inria.org.tictactoetutor;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -217,8 +218,18 @@ public class BoardView extends View {
 
     }
     public void init() {
-
+        hist = new int[]{Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY,
+                Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY};
+        turn = CROSS;
+        state = false;
+        current = 0;
+        hist[current] = getColor(getNumber(boards[current]));
+        invalidate();
     }
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+    }
+
     public void setActive() {
 
     }
@@ -420,6 +431,8 @@ public class BoardView extends View {
                                 turn = turn == CROSS ? NOUGHT : CROSS;
                                 playSound(soundID1);
                                 invalidate();
+                            } else {
+                                playSound(soundID2);
                             }
                         } else {
                             playSound(soundID1);
@@ -454,6 +467,8 @@ public class BoardView extends View {
                                     turn = (k == (k / 2) * 2) ? CROSS : NOUGHT;
                                     playSound(soundID1);
                                     invalidate();
+                                } else {
+                                    playSound(soundID2);
                                 }
                             }
                         }

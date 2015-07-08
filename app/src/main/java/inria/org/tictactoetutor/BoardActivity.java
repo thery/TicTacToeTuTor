@@ -45,6 +45,7 @@ public class BoardActivity extends ActionBarActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            view.init();
             return true;
         }
 
