@@ -218,8 +218,10 @@ public class BoardView extends View {
 
     }
     public void init() {
-        hist = new int[]{Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY,
-                Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY};
+        for (int i = 1; i < 10; i++) {
+            hist[i] = Color.GRAY;
+            boards[i] = null;
+        }
         turn = CROSS;
         state = false;
         current = 0;
@@ -266,31 +268,31 @@ public class BoardView extends View {
         return n;
     }
 
-
     @Override
-    protected void onDraw(Canvas canvas) {
-        if ((canvas.getHeight() != height) || (canvas.getWidth() == width)) {
-            System.out.println("change Size");
-            height = canvas.getHeight();
-            width = canvas.getWidth();
-            size = Math.min(height, width);
-            if (Math.max(height, width) - history < size) {
-                size = Math.max(height, width) - history;
-            }
-            border = size / 70;
-            if (size == height) {
-                mode = true;
-                historyS = size + (width - height - history) / 2;
-            } else {
-                mode = false;
-                historyS = size + (height - width - history) / 2;
-            }
-            mode = size == height;
-            circle = size / 6 - border;
-            history = size / 11;
-//            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeCap(Paint.Cap.ROUND);
+    protected void onSizeChanged(int w, int h, int ow, int oh) {
+        System.out.println("change Size");
+        System.out.println("w = " + w + ", h = " + h);
+        height = h;
+        width = w;
+        size = Math.min(height, width);
+        if (Math.max(height, width) - history < size) {
+            size = Math.max(height, width) - history;
         }
+        border = size / 70;
+        if (size == height) {
+            mode = true;
+            historyS = size + (width - height - history) / 2;
+        } else {
+            mode = false;
+            historyS = size + (height - width - history) / 2;
+        }
+        mode = size == height;
+        circle = size / 6 - border;
+        history = size / 11;
+    }
+
+    protected void onDraw(Canvas canvas) {
+        paint.setStrokeCap(Paint.Cap.ROUND);
         paint.setStyle(Paint.Style.FILL);
         paint.setStrokeWidth(border);
         paint.setColor(Color.BLACK);
