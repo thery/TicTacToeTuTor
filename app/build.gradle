@@ -8,8 +8,9 @@ android {
         applicationId "inria.org.tictactoetutor"
         minSdkVersion 9
         targetSdkVersion 22
-        versionCode 3
-        versionName "1.2"
+        versionCode 4s
+        
+        versionName "1.3"
     }
     buildTypes {
         release {

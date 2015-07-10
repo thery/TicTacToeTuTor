@@ -16,13 +16,12 @@ public class BoardActivity extends ActionBarActivity {
         setContentView(R.layout.activity_board);
         RelativeLayout rel = (RelativeLayout) findViewById(R.id.container);
 
-        final BoardView rootView = new BoardView(this, rel.getContext(), null);
+        final BoardView rootView = new BoardView(rel.getContext());
 
         rootView.post(new Runnable() {
             @Override
             public void run() {
                 rootView.init();
-                rootView.setActive();
             }
         });
         BoardActivity.view = rootView;
