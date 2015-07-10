@@ -230,6 +230,8 @@ public class BoardView extends View {
         shadowPaint.setStyle(Paint.Style.STROKE);
         shadowPaint.setShadowLayer(5.0f, 10.0f, 10.0f, Color.BLACK);
 
+
+
         audioManager =
                 (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 0);
@@ -537,6 +539,12 @@ public class BoardView extends View {
                         playSound(soundID2);
                         return true;
                     }
+                    if (boards[current + 1] != null && boards[current + 1][k] == EMPTY) {
+                        for (int i = current + 1; i < 10; i++) {
+                            colours[i] = Color.GRAY;
+                            boards[i] = null;
+                        }
+                    }
                     current++;
                     boards[current] = boards[current - 1].clone();
                     boards[current][k] = turn;
@@ -602,6 +610,7 @@ public class BoardView extends View {
         }
         return true;
     }
+
 
     private void playSound(int sid) {
         float actualVolume = (float) audioManager
