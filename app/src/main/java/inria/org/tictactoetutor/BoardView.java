@@ -173,7 +173,7 @@ public class BoardView extends View {
     private int[] hist;
     private int turn;
     private int current;
-    private final Paint paint;
+    private final Paint paint, shadowPaint;
     private float height;
     private float width;
     private float size;
@@ -191,6 +191,13 @@ public class BoardView extends View {
     public BoardView(BoardActivity bD, Context context, AttributeSet attrs) {
         super(context, attrs);
         paint = new Paint();
+        shadowPaint = new Paint();
+        shadowPaint.setAntiAlias(true);
+        shadowPaint.setColor(Color.WHITE);
+        shadowPaint.setTextSize(45.0f);
+        shadowPaint.setStrokeWidth(2.0f);
+        shadowPaint.setStyle(Paint.Style.STROKE);
+        shadowPaint.setShadowLayer(5.0f, 10.0f, 10.0f, Color.BLACK);
         height = 0;
         width = 0;
         mode = true;
@@ -270,8 +277,8 @@ public class BoardView extends View {
 
     @Override
     protected void onSizeChanged(int w, int h, int ow, int oh) {
-        System.out.println("change Size");
-        System.out.println("w = " + w + ", h = " + h);
+        // System.out.println("change Size");
+        // System.out.println("w = " + w + ", h = " + h);
         height = h;
         width = w;
         size = Math.min(height, width);
@@ -358,7 +365,10 @@ public class BoardView extends View {
                 }
             }
         } else {
-            System.out.println("Number = " + getNumber(boards[current]));
+            paint.setTextSize(50);
+            paint.setColor(Color.CYAN);
+            canvas.drawText("?",size-50,50,shadowPaint);
+//            System.out.println("Number = " + getNumber(boards[current]));
             paint.setColor(hist[current]);
             canvas.drawCircle(3 * (border + circle),
                     3 * (border + circle), 2 * circle, paint);
@@ -443,17 +453,49 @@ public class BoardView extends View {
 
                         }
                     } else {
-                        if (Math.pow(x - 3 * (border + circle), 2) +
+                        if (hasWon(boards[current], CROSS) || hasWon(boards[current], NOUGHT)
+                                || current == 9) {
+                            playSound(soundID2);
+                        } else if (size < x + 100 && y < 100) {
+                            state = !state;
+                            playSound(soundID1);
+                            invalidate();
+                        } else if (Math.pow(x - 3 * (border + circle), 2) +
                                 Math.pow(y - 3 * (border + circle), 2)
                                 < 4 * Math.pow(circle - border, 2)) {
-                            if (!hasWon(boards[current], CROSS) && !hasWon(boards[current], NOUGHT)
-                                    && current != 9) {
-                                state = !state;
+                            float cx = 3 * (circle + border);
+                            float cy = 3 * (circle + border);
+                            float cz =  (2 * (circle - border)) / (float) (3 * Math.sqrt(2));
+                            int dx = 0;
+                            if (x < cx - cz) {
+                                dx = 0;
+                            } else if (x < cx + cz) {
+                                dx = 1;
+                            } else {
+                                dx = 2;
+                            }
+                            int dy = 0;
+                            if (y < cy - cz) {
+                                dy = 0;
+                            } else if (y < cy + cz) {
+                                dy = 1;
+                            } else {
+                                dy = 2;
+                            }
+                            int k = dy + 3 * dx;
+                            if (boards[current][k] == EMPTY) {
+                                current++;
+                                boards[current]= boards[current - 1].clone();
+                                boards[current][k] = turn;
+                                hist[current] = getColor(getNumber(boards[current]));
+                                state = false;
+                                turn = turn == CROSS ? NOUGHT : CROSS;
                                 playSound(soundID1);
                                 invalidate();
                             } else {
                                 playSound(soundID2);
                             }
+
                         }
                     }
                 } else {
