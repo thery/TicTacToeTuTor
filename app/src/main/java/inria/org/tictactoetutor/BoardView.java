@@ -6,20 +6,23 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.media.AudioManager;
 import android.media.SoundPool;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.view.MotionEvent;
 import android.view.View;
+
+import java.util.Random;
 
 /**
  * TicTacToe board viewer Created by thery on 03/07/15.
  */
 public class BoardView extends View {
     /* Represent empty cell */
-    private static final int EMPTY = 0;
+    public static final int EMPTY = 0;
     /* Represent nought */
-    private static final int NOUGHT = 1;
+    public static final int NOUGHT = 1;
     /* Represent cross  */
-    private static final int CROSS = 2;
+    public static final int CROSS = 2;
     /* Encoded  winning position for noughts */
     private static final int[] winNought =
             new int[]{42369221, 551026688, 42469920, 1836, 1463837312, 2238989, 37748736, 134217730,
@@ -168,10 +171,14 @@ public class BoardView extends View {
                     68427936, 671091208, 66824, 0, 10518528, 0, -1610602464, 267296, 0, 0, 0, 0,};
     /* a board is a list of 9 integers, boards stores the colours of the game */
     private final int[][] boards;
+    /* a board is a list of 9 integers, boards stores the colours of the game */
+    public final int[][] score;
     /* colours stores the colours associated with each position in the board */
     private final int[] colours;
     /* boolean that indicates if we are evaluating multiple positions */
     private boolean multiple = true;
+    /* Tell whose state is */
+    private int state;
     /* Tell whose turn is */
     private int turn;
     /* index of the current board */
@@ -201,6 +208,7 @@ public class BoardView extends View {
     private final int soundID1;
     /* sound for a wrong move */
     private final int soundID2;
+    Random random = new Random();
 
     public BoardView(Context context) {
         super(context, null);
@@ -211,6 +219,7 @@ public class BoardView extends View {
 
         boards = new int[10][];
         boards[0] = new int[9];
+        score = new int[][]{{0, 0, 0},{0, 0, 0}, {0, 0, 0}};
         current = 0;
         colours = new int[10];
         for (int i = 0; i < 10; i++) {
@@ -218,6 +227,7 @@ public class BoardView extends View {
         }
         colours[current] = getColour(getNumber(boards[current]));
 
+        state = NOUGHT;
         turn = CROSS;
         multiple = false;
 
@@ -229,7 +239,6 @@ public class BoardView extends View {
         shadowPaint.setStrokeWidth(2.0f);
         shadowPaint.setStyle(Paint.Style.STROKE);
         shadowPaint.setShadowLayer(5.0f, 10.0f, 10.0f, Color.BLACK);
-
 
 
         audioManager =
@@ -249,7 +258,7 @@ public class BoardView extends View {
     }
 
     /* Return the number associated to a position */
-    private static int getNumber(int[] board) {
+    static int getNumber(int[] board) {
         int n = 0;
         for (int i = 8; 0 <= i; i--) {
             n = n * 3 + board[i];
@@ -260,6 +269,13 @@ public class BoardView extends View {
     /* Return the colour associated with a position number
      *  WHITE -> draw BLUE -> cross is winning RED -> nought is winning  */
     private static int getColour(int num) {
+        System.out.println("number = " + num);
+        System.out.println("winNought = " + winNought[num >> 5]);
+        System.out.println("valN = " + (winNought[num >> 5] & (1 << (num & ((1 << 5) - 1)))));
+        System.out.println("number = " + num);
+        System.out.println("winCross = " + winCross[num >> 5]);
+        System.out.println("valC = " + (winCross[num >> 5] & (1 << (num & ((1 << 5) - 1)))));
+
         if (0 != (winNought[num >> 5] & (1 << (num & ((1 << 5) - 1))))) {
             if (0 != (winCross[num >> 5] & (1 << (num & ((1 << 5) - 1))))) {
                 return Color.WHITE;
@@ -285,6 +301,155 @@ public class BoardView extends View {
 
     }
 
+    /* Check if the board is full */
+    private static boolean isDraw(int[] board) {
+        int n = 0;
+        for (int i = 8; 0 <= i; i--) {
+            if (board[i] == EMPTY) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /* Check if the position board is won for the player turn */
+    private static boolean isWon(int[] board, int turn) {
+        int colour = getColour(getNumber(board));
+        return (((turn == CROSS) && (colour == Color.BLUE)) ||
+                ((turn == NOUGHT) && (colour == Color.RED)));
+    }
+
+    /* Check if the position board is lost for the player turn */
+    private static boolean isLost(int[] board, int turn) {
+        int colour = getColour(getNumber(board));
+        return (((turn == CROSS) && (colour == Color.RED)) ||
+                ((turn == NOUGHT) && (colour == Color.BLUE)));
+    }
+
+    private int swapTurn(int turn) {
+        return turn == CROSS ? NOUGHT : CROSS;
+    }
+
+    private void makeMove(int move) {
+        current++;
+        boards[current] = boards[current - 1].clone();
+        boards[current][move] = turn;
+        colours[current] = getColour(getNumber(boards[current]));
+        multiple = false;
+        turn = swapTurn(turn);
+        playSound(soundID1);
+        if (state != EMPTY) {
+            if (isDraw(boards[current])) {
+                score[state][EMPTY]++;
+            }
+            if (hasWon(boards[current], CROSS)) {
+                score[state][CROSS]++;
+            }
+            if (hasWon(boards[current], NOUGHT)) {
+                score[state][NOUGHT]++;
+            }
+        }
+        invalidate();
+        if (turn == state) {
+            Handler handler = new Handler();
+            final BoardView bv = this;
+            handler.postDelayed(new Runnable() {
+                public void run() {
+                    bv.play(turn);
+                }
+            }, 1000);
+        }
+        return;
+    }
+
+    /* Check if the player turn has a direct win on the position board */
+    private static int hasDirectWin(int[] board, int turn) {
+        int n = 0;
+        for (int i = 8; 0 <= i; i--) {
+            if (board[i] == EMPTY) {
+                board[i] = turn;
+                if (hasWon(board,turn)) {
+                    board[i] = EMPTY;
+                    return i;
+                }
+                board[i] = EMPTY;
+            }
+        }
+        return -1;
+    }
+
+    public void play(int turn) {
+        int[] board = boards[current];
+        if ((state == EMPTY) || (turn != this.turn)
+            || hasWon(board,turn) || hasWon(board,swapTurn(turn))|| isDraw(board)) {
+            return;
+        }
+        if (isWon(board, turn)) {
+            /* it is a winning position we choose a winning move */
+            int move = hasDirectWin(board, turn);
+            if (move != -1) {
+               /* there is a direct win */
+                makeMove(move);
+                return;
+            }
+            int pmove = 0;
+            boolean[] pmoves = new boolean[9];
+            int sturn = swapTurn(turn);
+            for (int i = 0; i < 9; i++) {
+                pmoves[i] = false;
+                if (board[i] == EMPTY) {
+                    board[i] = turn;
+                    if (isLost(board, sturn)) {
+                        board[i] = EMPTY;
+                        pmove++;
+                        pmoves[i] = true;
+                    }
+                    board[i] = EMPTY;
+                }
+            }
+            int rand = random.nextInt(pmove);
+            for (int i = 0; i < 9; i++) {
+                if (pmoves[i]) {
+                    if (rand == 0) {
+                        makeMove(i);
+                    }
+                    rand--;
+                }
+            }
+            return;
+        }
+        int move = hasDirectWin(board, swapTurn(turn));
+        if (move != -1) {
+               /* there is a direct win for the other player */
+            makeMove(move);
+            return;
+        }
+        int pmove = 0;
+        boolean[] pmoves = new boolean[9];
+        int sturn = swapTurn(turn);
+        for (int i = 0; i < 9; i++) {
+            pmoves[i] = false;
+            if (board[i] == EMPTY) {
+                pmove++;
+                pmoves[i] = true;
+            }
+
+        }
+        int rand = random.nextInt(pmove);
+        for (int i = 0; i < 9; i++) {
+            if (pmoves[i]) {
+                if (rand == 0) {
+                    makeMove(i);
+                }
+                rand--;
+            }
+        }
+        return;
+
+    }
+
+
+
     /* Reset the boards and the colours */
     public void init() {
         for (int i = 1; i < 10; i++) {
@@ -296,8 +461,31 @@ public class BoardView extends View {
         current = 0;
         colours[current] = getColour(getNumber(boards[current]));
         invalidate();
+        if (turn == state) {
+            Handler handler = new Handler();
+            final BoardView bv = this;
+            handler.postDelayed(new Runnable() {
+                public void run() {
+                    bv.play(turn);
+                }
+            }, 1000);
+        }
+    }
+    /* Reset score */
+    public void scoreInit() {
+        for (int i = 0; i < 3; i++) {
+            for(int j = 0; j < 3; j++) {
+                score[i][j] = 0;
+            }
+        }
+        invalidate();
     }
 
+    /* Set the state of the game */
+    public void setState (int s) {
+        state = s;
+        invalidate();
+    }
 
     @Override
     /* when canvas changes size, we update the drawing parameters */
@@ -334,38 +522,68 @@ public class BoardView extends View {
         paint.setColor(Color.DKGRAY);
         /* Rectangle containing the main board */
         canvas.drawRect(0, 0, size, size, paint);
-        if (orientation) {
+        if (state == EMPTY) {
+            if (orientation) {
             /* Draw the 10 colour of the history box *in vertical mode */
-            paint.setColor(Color.DKGRAY);
-            canvas.drawRect(colourStart, 0, colourStart + colourWidth, size, paint);
-            float x = colourStart + colourWidth / 2;
-            float y;
-            float r = (colourWidth - border) / 2;
-            float r1 = (colourWidth - 2 * border) / 2;
-            for (int i = 0; i < 10; i++) {
-                y = (size * (2 * i + 1)) / 20;
-                paint.setColor(colours[i]);
-                paint.setStrokeWidth(border);
-                canvas.drawCircle(x, y, r, paint);
-                paint.setColor(Color.BLACK);
-                canvas.drawCircle(x, y, r1, paint);
+                paint.setColor(Color.DKGRAY);
+                canvas.drawRect(colourStart, 0, colourStart + colourWidth, size, paint);
+                float x = colourStart + colourWidth / 2;
+                float y;
+                float r = (colourWidth - border) / 2;
+                float r1 = (colourWidth - 2 * border) / 2;
+                for (int i = 0; i < 10; i++) {
+                    y = (size * (2 * i + 1)) / 20;
+                    paint.setColor(colours[i]);
+                    paint.setStrokeWidth(border);
+                    canvas.drawCircle(x, y, r, paint);
+                    paint.setColor(Color.BLACK);
+                    canvas.drawCircle(x, y, r1, paint);
+                }
+            } else {
+            /* Draw the 10 colour of the history box in horizontal mode */
+                paint.setColor(Color.DKGRAY);
+                canvas.drawRect(0, colourStart, size, colourStart + colourWidth, paint);
+                float x;
+                float y = colourStart + colourWidth / 2;
+                float r = (colourWidth - border) / 2;
+                float r1 = (colourWidth - 2 * border) / 2;
+                for (int k = 0; k < 10; k++) {
+                    x = (size * (2 * k + 1)) / 20;
+                    paint.setColor(colours[k]);
+                    paint.setStrokeWidth(border);
+                    canvas.drawCircle(x, y, r, paint);
+                    paint.setColor(Color.BLACK);
+                    canvas.drawCircle(x, y, r1, paint);
+                }
             }
         } else {
-            /* Draw the 10 colour of the history box in horizontal mode */
-            paint.setColor(Color.DKGRAY);
-            canvas.drawRect(0, colourStart, size, colourStart + colourWidth, paint);
-            float x;
-            float y = colourStart + colourWidth / 2;
-            float r = (colourWidth - border) / 2;
-            float r1 = (colourWidth - 2 * border) / 2;
-            for (int k = 0; k < 10; k++) {
-                x = (size * (2 * k + 1)) / 20;
-                paint.setColor(colours[k]);
-                paint.setStrokeWidth(border);
-                canvas.drawCircle(x, y, r, paint);
-                paint.setColor(Color.BLACK);
-                canvas.drawCircle(x, y, r1, paint);
+            if (orientation) {
+            /* Draw the 3 scores */
+                float x = colourStart + colourWidth / 2;
+                float y = (size * (2 * 2 + 1)) / 20;
+                paint.setColor(Color.BLUE);
+                canvas.drawText("" + score[state][CROSS], x, y, paint);
+                y = (size * (2 * 4 + 1)) / 20;
+                paint.setColor(Color.WHITE);
+                canvas.drawText("" + score[state][EMPTY], x, y, paint);
+                y = (size * (2 * 6 + 1)) / 20;
+                paint.setColor(Color.RED);
+                canvas.drawText("" + score[state][NOUGHT], x, y, paint);
+
+            } else {
+            /* Draw the 3 scores horizontal mode */
+                float y = colourStart + colourWidth / 2;
+                float x = (size * (2 * 2 + 1)) / 20;
+                paint.setColor(Color.BLUE);
+                canvas.drawText("" + score[state][CROSS], x, y, paint);
+                x = (size * (2 * 4 + 1)) / 20;
+                paint.setColor(Color.WHITE);
+                canvas.drawText("" + score[state][EMPTY], x, y, paint);
+                x = (size * (2 * 6 + 1)) / 20;
+                paint.setColor(Color.RED);
+                canvas.drawText("" + score[state][NOUGHT], x, y, paint);
             }
+
         }
         if (multiple) {
             /* Draw the 9 possible positions */
@@ -388,7 +606,7 @@ public class BoardView extends View {
                     canvas.drawCircle(x + cb, y + cb, circle - border, paint);
                     if (boards[current][k] == EMPTY) {
                         boards[current][k] = turn;
-                        drawBoard(boards[current], x, y, 1, canvas, paint);
+                        drawBoard(boards[current], x, y, 1, canvas,  paint);
                         boards[current][k] = EMPTY;
                     }
                     k++;
@@ -398,8 +616,10 @@ public class BoardView extends View {
         } else {
             paint.setTextSize(50);
             paint.setColor(Color.CYAN);
+            if (state == EMPTY) {
             /* Draw the question mark */
-            canvas.drawText("?", size - 50, 50, shadowPaint);
+                canvas.drawText("?", size - 50, 50, shadowPaint);
+            }
             /* Draw the main position */
             paint.setColor(colours[current]);
             float cb = border + circle;
@@ -416,6 +636,12 @@ public class BoardView extends View {
         /* Draw the lines of the position */
         p.setStrokeWidth((scale * border) / 2);
         p.setColor(Color.WHITE);
+        if (hasWon(board, CROSS)) {
+            p.setColor(Color.BLUE);
+        }
+        if (hasWon(board, NOUGHT)) {
+            p.setColor(Color.RED);
+        }
         float cx = x + (scale * (circle + border));
         float cy = y + (scale * (circle + border));
         float cz = (scale * (circle - border)) / (float) Math.sqrt(2);
@@ -483,29 +709,32 @@ public class BoardView extends View {
                                 boards[i] = null;
                             }
                         }
+                        if (state == turn) {
+                            playSound(soundID2);
+                            return true;
+                        }
                         /* Then we make the move */
-                        current++;
-                        boards[current] = boards[current - 1].clone();
-                        boards[current][val] = turn;
-                        colours[current] = getColour(getNumber(boards[current]));
-                        multiple = false;
-                        turn = turn == CROSS ? NOUGHT : CROSS;
-                        playSound(soundID1);
-                        invalidate();
+                        makeMove(val);
                         return true;
                     }
                     /* Can we still play a move */
                     if (hasWon(boards[current], CROSS) || hasWon(boards[current], NOUGHT)
                             || current == 9) {
+                        if (state != EMPTY) {
+                            init();
+                            return true;
+                        }
                         playSound(soundID2);
                         return true;
                     }
+                    if (state == EMPTY) {
                     /* Did we click on the question mark? */
-                    if (size < x + 100 && y < 100) {
-                        multiple = !multiple;
-                        playSound(soundID1);
-                        invalidate();
-                        return true;
+                        if (size < x + 100 && y < 100) {
+                            multiple = !multiple;
+                            playSound(soundID1);
+                            invalidate();
+                            return true;
+                        }
                     }
                     /* Are we outside the big circle? */
                     float cb = border + circle;
@@ -545,36 +774,59 @@ public class BoardView extends View {
                             boards[i] = null;
                         }
                     }
-                    current++;
-                    boards[current] = boards[current - 1].clone();
-                    boards[current][k] = turn;
-                    colours[current] = getColour(getNumber(boards[current]));
-                    multiple = false;
-                    turn = turn == CROSS ? NOUGHT : CROSS;
-                    playSound(soundID1);
-                    invalidate();
+                    if (state == turn) {
+                        playSound(soundID2);
+                        return true;
+                    }
+                    makeMove(k);
                     return true;
                 }
+                if (state == EMPTY) {
                 /* Only possibility : we click on the history box */
-                if (orientation) {
-                    if (x <= colourStart || colourWidth + colourStart <= x) {
+                    if (orientation) {
+                        if (x <= colourStart || colourWidth + colourStart <= x) {
+                        /* we are outside the box */
+                            return true;
+                        }
+                    /* k is the potential colour we click on */
+                        int k = (int) (20 * y / (size * 2));
+                        if (4 * Math.pow((colourWidth - border) / 2, 2) <=
+                                4 * (Math.pow(x - (colourStart + colourWidth / 2), 2) +
+                                        Math.pow(y - (size * (2 * k + 1)) / 20, 2))) {
+                        /* we have clicked too far */
+                            return true;
+                        }
+                        if (boards[k] == null) {
+                        /* we have clicked in an empty colour */
+                            playSound(soundID2);
+                            return true;
+                        }
+                    /* We update the current position */
+                        current = k;
+                        multiple = false;
+                        turn = (k == (k / 2) * 2) ? CROSS : NOUGHT;
+                        playSound(soundID1);
+                        invalidate();
+                        return true;
+                    }
+                    if (y <= colourStart || colourWidth + colourStart <= y) {
                         /* we are outside the box */
                         return true;
                     }
                     /* k is the potential colour we click on */
-                    int k = (int) (20 * y / (size * 2));
+
+                    int k = (int) (20 * x / (size * 2));
                     if (4 * Math.pow((colourWidth - border) / 2, 2) <=
-                            4 * (Math.pow(x - (colourStart + colourWidth / 2), 2) +
-                                    Math.pow(y - (size * (2 * k + 1)) / 20, 2))) {
-                        /* we have clicked too far */
+                            4 * (Math.pow(y - (colourStart + colourWidth / 2), 2) +
+                                    Math.pow(x - (size * (2 * k + 1)) / 20, 2))) {
+                            /* we have clicked too far */
                         return true;
                     }
                     if (boards[k] == null) {
-                        /* we have clicked in an empty colour */
+                    /* we have clicked in an empty colour */
                         playSound(soundID2);
                         return true;
                     }
-                    /* We update the current position */
                     current = k;
                     multiple = false;
                     turn = (k == (k / 2) * 2) ? CROSS : NOUGHT;
@@ -582,30 +834,6 @@ public class BoardView extends View {
                     invalidate();
                     return true;
                 }
-                if (y <= colourStart || colourWidth + colourStart <= y) {
-                        /* we are outside the box */
-                    return true;
-                }
-                    /* k is the potential colour we click on */
-
-                int k = (int) (20 * x / (size * 2));
-                if (4 * Math.pow((colourWidth - border) / 2, 2) <=
-                        4 * (Math.pow(y - (colourStart + colourWidth / 2), 2) +
-                                Math.pow(x - (size * (2 * k + 1)) / 20, 2))) {
-                            /* we have clicked too far */
-                    return true;
-                }
-                if (boards[k] == null) {
-                    /* we have clicked in an empty colour */
-                    playSound(soundID2);
-                    return true;
-                }
-                current = k;
-                multiple = false;
-                turn = (k == (k / 2) * 2) ? CROSS : NOUGHT;
-                playSound(soundID1);
-                invalidate();
-                return true;
             }
         }
         return true;
