@@ -232,6 +232,7 @@ public class BoardView extends View {
         multiple = false;
 
         paint = new Paint();
+        paint.setTextSize(50);
         shadowPaint = new Paint();
         shadowPaint.setAntiAlias(true);
         shadowPaint.setColor(Color.WHITE);
